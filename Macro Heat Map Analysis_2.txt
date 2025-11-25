@@ -1,0 +1,39 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+years = list(range(2015, 2025))
+cities = ['Bengaluru', 'Mumbai', 'Delhi NCR', 'Pune', 'Hyderabad', 'Kolkata', 'Chennai']
+
+rent_data = {
+    'Year': years,
+    'Bengaluru': [55, 58, 60, 63, 65, 66, 68, 70, 72, 75],
+    'Mumbai': [105, 108, 110, 114, 117, 120, 123, 126, 130, 134],
+    'Delhi NCR': [90, 92, 94, 97, 99, 100, 102, 105, 107, 110],
+    'Pune': [55, 57, 59, 60, 61, 63, 65, 67, 70, 73],
+    'Hyderabad': [40, 42, 44, 48, 52, 55, 58, 62, 65, 69],
+    'Kolkata': [35, 36, 37, 38, 39, 40, 41, 43, 45, 46],
+    'Chennai': [50, 52, 53, 55, 56, 58, 59, 61, 63, 65]
+}
+
+df_rent = pd.DataFrame(rent_data)
+df_rent.set_index('Year', inplace=True)
+
+plt.figure(figsize=(14, 7))
+for city in df_rent.columns:
+    plt.plot(df_rent.index, df_rent[city], marker='o', label=city)
+plt.title('Office Rent Prices (Rs/sqft/month) in Indian Cities (2015–2024)')
+plt.xlabel('Year')
+plt.ylabel('Rent Price (Rs/sqft/month)')
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+
+plt.figure(figsize=(12, 6))
+sns.heatmap(df_rent.T, annot=True, fmt=".0f", cmap='YlGnBu', cbar_kws={'label': 'Rent (Rs/sqft/month)'})
+plt.title('Heatmap of Office Rent Prices in Indian Cities (2015–2024)')
+plt.xlabel('Year')
+plt.ylabel('City')
+plt.tight_layout()
+plt.show()
