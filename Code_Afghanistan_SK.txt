@@ -1,0 +1,262 @@
+import time 
+import csv
+import random
+import zipfile
+import os
+
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.chrome.service import Service
+from selenium.common.exceptions import InvalidSessionIdException, WebDriverException
+from webdriver_manager.chrome import ChromeDriverManager
+
+
+LINKEDIN_EMAIL = "Email"
+LINKEDIN_PASSWORD = "password"
+INPUT_CSV = "company_city_list_afghanistan.csv"
+OUTPUT_CSV = "real_estate_professionals_afghanistan.csv"
+OUTPUT_ZIP = "real_estate_professionals_afghanistan.zip"
+
+NUM_QUERIES = 50
+MAX_RESULTS_PER_QUERY = 5
+BATCH_SIZE = 5
+
+
+companies = [
+    "Afghan Construction Company",
+    "Kabul Construction Company",
+    "Herat Developers",
+    "Mazar Construction",
+    "Kandahar Properties",
+    "Jalalabad Real Estate",
+    "Bamyan Construction",
+    "Ghazni Developers",
+    "Kunduz Properties",
+    "Lashkar Gah Construction",
+    "Farah Construction Company",
+    "Ghor Builders",
+    "Badakhshan Properties",
+    "Takhar Construction",
+    "Baghlan Developers",
+    "Parwan Real Estate",
+    "Kapisa Construction",
+    "Laghman Properties",
+    "Kunar Builders",
+    "Nuristan Construction",
+    "Afghan Traditional Builders",
+    "Kabul Heritage Properties",
+    "Ancient City Developers",
+    "Historical Restoration Company",
+    "Cultural Properties Afghanistan",
+    "Heritage Construction Group",
+    "Traditional Architecture Firm",
+    "Cultural Development Company",
+    "Historical Properties Ltd",
+    "Ancient Builders Group",
+    "Afghanistan Infrastructure Development",
+    "Rural Construction Company",
+    "Village Development Corp",
+    "Agricultural Construction",
+    "Irrigation Construction Company",
+    "Road Construction Afghanistan",
+    "Bridge Construction Corp",
+    "Water Infrastructure Company",
+    "Rural Housing Development",
+    "Community Construction Group",
+    "Local Construction Cooperative",
+    "Community Builders Group",
+    "Small Scale Developers",
+    "Residential Construction Co",
+    "Housing Development Corp",
+    "Local Properties Group",
+    "Community Real Estate",
+    "Traditional Housing Company",
+    "Local Development Group",
+    "Community Construction Corp",
+    "Afghan Sadaqat Construction Company",
+    "Afghan Construction Companies Umbrella (ACCU)",
+    "Cinderella Construction Company",
+    "Kahkashan Construction Company",
+    "Sana Afghan Construction",
+    "Ministry of Public Works (Afghanistan)",
+    "Bayat Power",
+    "Afghan Wireless Communication Company",
+    "Azizi Bank",
+    "Rahnama Online"
+]
+
+
+cities = [
+    "Kabul", "Herat", "Mazar-i-Sharif", "Kandahar", "Jalalabad",
+    "Bamyan", "Ghazni", "Kunduz", "Lashkar Gah", "Farah",
+    "Ghor", "Badakhshan", "Takhar", "Baghlan", "Parwan",
+    "Kapisa", "Laghman", "Kunar", "Nuristan"
+]
+
+job_titles = [
+    "Real Estate Agent",
+    "Real Estate Consultant",
+    "Property Advisor",
+    "Property Manager",
+    "Broker",
+    "Realty Specialist"
+]
+
+driver = None
+
+def init_driver():
+    global driver
+    options = webdriver.ChromeOptions()
+    options.add_argument("--start-maximized")
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+
+def linkedin_login():
+    driver.get("https://www.linkedin.com/login")
+    time.sleep(3)
+    driver.find_element(By.ID, "username").send_keys(LINKEDIN_EMAIL)
+    driver.find_element(By.ID, "password").send_keys(LINKEDIN_PASSWORD)
+    driver.find_element(By.ID, "password").send_keys(Keys.RETURN)
+    time.sleep(5)
+    print("[INFO] Logged into LinkedIn successfully!")
+
+def restart_driver():
+    global driver
+    try:
+        driver.quit()
+    except:
+        pass
+    print("[INFO] Restarting ChromeDriver...")
+    init_driver()
+    linkedin_login()
+
+def safe_get(url):
+    global driver
+    try:
+        driver.get(url)
+    except InvalidSessionIdException:
+        print("[WARN] Session expired! Restarting driver...")
+        restart_driver()
+        driver.get(url)
+    except WebDriverException as e:
+        print(f"[WARN] WebDriverException: {e}. Restarting driver...")
+        restart_driver()
+        driver.get(url)
+
+def generate_real_estate_queries():
+    queries = []
+    for _ in range(NUM_QUERIES):
+        queries.append({
+            "company": random.choice(companies),
+            "city": random.choice(cities),
+            "job_title": random.choice(job_titles)
+        })
+    with open(INPUT_CSV, "w", newline="", encoding="utf-8") as csvfile:
+        fieldnames = ["company", "city", "job_title"]
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(queries)
+    print(f"[INFO] Generated {INPUT_CSV} with {NUM_QUERIES} Afghanistan queries")
+
+def search_linkedin_real_estate(query, max_results=5):
+    geo_urn_afghanistan = "%5B%22104993090%22%5D"
+    search_url = f"https://www.linkedin.com/search/results/people/?keywords={query.replace(' ', '%20')}&geoUrn={geo_urn_afghanistan}&origin=GLOBAL_SEARCH_HEADER"
+    print(f"[INFO] Visiting Afghanistan-specific search URL: {search_url}")
+    safe_get(search_url)
+    time.sleep(random.uniform(6, 9))
+    profile_data = []
+    try:
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        time.sleep(random.uniform(3, 5))
+        results = driver.find_elements(By.CSS_SELECTOR, "li.reusable-search__result-container")
+        for res in results[:max_results]:
+            try:
+                profile_link = res.find_element(By.CSS_SELECTOR, "a.app-aware-link").get_attribute("href")
+                name_element = res.find_element(By.CSS_SELECTOR, "span.entity-result__title-text span[aria-hidden='true']")
+                name_text = name_element.text.strip()
+                try:
+                    job_company_element = res.find_element(By.CSS_SELECTOR, "div.entity-result__primary-subtitle")
+                    job_company_text = job_company_element.text.strip()
+                except:
+                    job_company_text = "N/A"
+                try:
+                    location_element = res.find_element(By.CSS_SELECTOR, "div.entity-result__secondary-subtitle")
+                    location_text = location_element.text.strip()
+                except:
+                    location_text = "N/A"
+                if "linkedin.com/in/" in profile_link:
+                    profile_data.append({
+                        "name": name_text,
+                        "linkedin_url": profile_link,
+                        "current_position": job_company_text,
+                        "location": location_text
+                    })
+            except Exception:
+                continue
+    except Exception as e:
+        print(f"[WARN] No results found for: {query}, Error: {e}")
+    return profile_data
+
+def create_zip_file(csv_file, zip_file):
+    with zipfile.ZipFile(zip_file, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        zipf.write(csv_file)
+    print(f"[INFO] Created ZIP file: {zip_file}")
+
+def main():
+    generate_real_estate_queries()
+    init_driver()
+    linkedin_login()
+    all_results = []
+    with open(INPUT_CSV, "r", encoding="utf-8") as infile:
+        reader = csv.DictReader(infile)
+        queries = list(reader)
+    for i in range(0, len(queries), BATCH_SIZE):
+        batch = queries[i:i+BATCH_SIZE]
+        print(f"\n[INFO] Processing batch {i//BATCH_SIZE + 1}/{(len(queries)+BATCH_SIZE-1)//BATCH_SIZE}")
+        for row in batch:
+            query = f"{row['job_title']} at {row['company']} in {row['city']} Afghanistan"
+            print(f"[INFO] Searching for: {query} (Afghanistan-specific)")
+            try:
+                profiles = search_linkedin_real_estate(query, MAX_RESULTS_PER_QUERY)
+            except InvalidSessionIdException:
+                print("[WARN] Session lost mid-search, restarting...")
+                restart_driver()
+                profiles = search_linkedin_real_estate(query, MAX_RESULTS_PER_QUERY)
+            if profiles:
+                for p in profiles:
+                    all_results.append({
+                        "company": row['company'],
+                        "city": row['city'],
+                        "job_title": row['job_title'],
+                        "name": p["name"],
+                        "linkedin_url": p["linkedin_url"],
+                        "current_position": p["current_position"],
+                        "location": p["location"]
+                    })
+            else:
+                all_results.append({
+                    "company": row['company'],
+                    "city": row['city'],
+                    "job_title": row['job_title'],
+                    "name": "NOT FOUND",
+                    "linkedin_url": "NOT FOUND",
+                    "current_position": "NOT FOUND",
+                    "location": "NOT FOUND"
+                })
+            time.sleep(random.uniform(8, 15))
+        restart_driver()
+    with open(OUTPUT_CSV, "w", newline="", encoding="utf-8") as outfile:
+        fieldnames = ["company","city","job_title","name","linkedin_url","current_position","location"]
+        writer = csv.DictWriter(outfile, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(all_results)
+    print(f"[DONE] Saved Afghanistan professional data to {OUTPUT_CSV}")
+    create_zip_file(OUTPUT_CSV, OUTPUT_ZIP)
+    driver.quit()
+    print("\n DONE! Afghanistan-specific data is ready.")
+    print(f" CSV File: {os.path.abspath(OUTPUT_CSV)}")
+    print(f" Downloadable ZIP: {os.path.abspath(OUTPUT_ZIP)}")
+
+if __name__ == "__main__":
+    main()
