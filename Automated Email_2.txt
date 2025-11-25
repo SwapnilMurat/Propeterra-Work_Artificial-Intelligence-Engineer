@@ -1,0 +1,141 @@
+import smtplib
+import ssl
+import csv
+from datetime import datetime
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
+
+SMTP_SERVER = "smtp.gmail.com"                
+SMTP_PORT = 465                                
+SENDER_EMAIL = "your_email@gmail.com"          
+SENDER_NAME = "Your Name"
+APP_PASSWORD = "your_app_password_here"        
+
+SUBJECT_TEMPLATE = "Invitation to Join Consulteligence – {company}"
+
+
+HTML_BODY = """
+<html>
+  <body style="font-family: Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #333;">
+    <p>Dear {name},</p>
+
+    <p>
+      I’m reaching out from <strong>Propeterra</strong>, a global platform that connects
+      international real estate investors with trusted local experts.
+    </p>
+
+    <p>
+      We’re building a curated advisory network called <strong>Consulteligence</strong>,
+      and we’d love to invite you to be part of it — especially given your expertise
+      in areas concerning the real estate market.
+    </p>
+
+    <p>
+      The goal is simple: help investors make smarter decisions by connecting them
+      with on-the-ground experts like you — on your own terms, without extra time commitment.
+    </p>
+
+    <p>
+      Here’s a quick video about what we’re building:<br>
+      <a href="https://youtu.be/h4x7EMl79NU" target="_blank">
+        https://youtu.be/h4x7EMl79NU
+      </a>
+    </p>
+
+    <p>
+      If it sounds interesting, click below to join or sign up:<br>
+      <a href="https://consulteligence.propeterra.com" target="_blank"
+         style="display:inline-block; padding:10px 18px; margin-top:8px;
+                background-color:#1a73e8; color:#fff; text-decoration:none;
+                border-radius:4px; font-weight:bold;">
+        Join Consulteligence
+      </a>
+    </p>
+
+    <p>Would love to have you on board!</p>
+
+    <p>Best regards,<br>
+       {sender_name}</p>
+  </body>
+</html>
+"""
+
+TEXT_BODY = """
+Dear {name},
+
+I’m reaching out from Propeterra, a global platform that connects international real estate investors with trusted local experts.
+
+We’re building a curated advisory network called Consulteligence, and we’d love to invite you to be part of it — especially given your expertise in areas concerning the real estate market.
+
+The goal is simple: help investors make smarter decisions by connecting them with on-the-ground experts like you — on your own terms, without extra time commitment.
+
+Here’s a quick video about what we’re building:
+https://youtu.be/h4x7EMl79NU
+
+If it sounds interesting, join here:
+https://consulteligence.propeterra.com
+
+Would love to have you on board!
+
+Best regards,
+{sender_name}
+"""
+
+
+def send_email(recipient_email, subject, html_body, text_body):
+    """Send an email with both HTML and plain text parts."""
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["From"] = f"{SENDER_NAME} <{SENDER_EMAIL}>"
+        msg["To"] = recipient_email
+        msg["Subject"] = subject
+
+        # Attach text and HTML
+        msg.attach(MIMEText(text_body, "plain"))
+        msg.attach(MIMEText(html_body, "html"))
+
+        # Send email
+        context = ssl.create_default_context()
+        with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT, context=context) as server:
+            server.login(SENDER_EMAIL, APP_PASSWORD)
+            server.sendmail(SENDER_EMAIL, recipient_email, msg.as_string())
+
+        return True, None
+
+    except Exception as e:
+        return False, str(e)
+
+
+
+def main():
+    log_file = "email_log.csv"
+    with open("contacts.csv", newline="", encoding="utf-8") as csvfile, \
+         open(log_file, "w", newline="", encoding="utf-8") as logfile:
+
+        reader = csv.DictReader(csvfile)
+        log_writer = csv.writer(logfile)
+        log_writer.writerow(["name", "email", "company", "status", "timestamp", "error"])
+
+        for row in reader:
+            name = row["name"].strip()
+            email = row["email"].strip()
+            company = row.get("company", "").strip()
+
+            subject = SUBJECT_TEMPLATE.format(company=company)
+            html_body = HTML_BODY.format(name=name, sender_name=SENDER_NAME)
+            text_body = TEXT_BODY.format(name=name, sender_name=SENDER_NAME)
+
+            success, error = send_email(email, subject, html_body, text_body)
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+            if success:
+                print(f" Email sent to {name} <{email}>")
+                log_writer.writerow([name, email, company, "SENT", timestamp, ""])
+            else:
+                print(f" Failed to send to {name} <{email}>: {error}")
+                log_writer.writerow([name, email, company, "FAILED", timestamp, error])
+
+
+if __name__ == "__main__":
+    main()
