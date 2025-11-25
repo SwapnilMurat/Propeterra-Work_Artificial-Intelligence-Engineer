@@ -1,0 +1,154 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from datetime import datetime, timedelta
+
+sns.set_style("whitegrid")
+plt.rcParams['figure.figsize'] = (14, 10)
+
+start_date = datetime(2023, 1, 1)
+end_date = datetime(2024, 12, 31)
+dates = pd.date_range(start=start_date, end=end_date, freq='D')
+
+np.random.seed(42)
+n_days = len(dates)
+
+data = {
+    'date': dates,
+    'page_views': np.random.poisson(1000, n_days) + 200 * np.sin(np.arange(n_days) * 2 * np.pi / 365),
+    'unique_visitors': np.random.poisson(500, n_days) + 100 * np.sin(np.arange(n_days) * 2 * np.pi / 365),
+    'bounce_rate': np.random.beta(2, 5, n_days) * 100,
+    'avg_session_duration': np.random.gamma(2, 2, n_days) * 60,
+    'conversions': np.random.poisson(50, n_days) + 10 * np.sin(np.arange(n_days) * 2 * np.pi / 365)
+}
+
+df = pd.DataFrame(data)
+
+df['year'] = df['date'].dt.year
+df['month'] = df['date'].dt.month
+df['day_of_week'] = df['date'].dt.day_name()
+df['week_of_year'] = df['date'].dt.isocalendar().week
+
+df['page_views_7d_ma'] = df['page_views'].rolling(window=7, center=True).mean()
+df['page_views_30d_ma'] = df['page_views'].rolling(window=30, center=True).mean()
+
+monthly_stats = df.groupby([df['year'], df['month']]).agg({
+    'page_views': 'sum',
+    'unique_visitors': 'sum',
+    'conversions': 'sum'
+}).reset_index()
+monthly_stats['mom_growth'] = monthly_stats['page_views'].pct_change() * 100
+
+fig = plt.figure(figsize=(16, 12))
+
+ax1 = plt.subplot(3, 2, 1)
+ax1.plot(df['date'], df['page_views'], alpha=0.3, label='Daily Page Views', color='blue')
+ax1.plot(df['date'], df['page_views_7d_ma'], label='7-Day MA', color='orange', linewidth=2)
+ax1.plot(df['date'], df['page_views_30d_ma'], label='30-Day MA', color='red', linewidth=2)
+ax1.set_title('Page Views Time Series with Moving Averages', fontsize=14, fontweight='bold')
+ax1.set_xlabel('Date')
+ax1.set_ylabel('Page Views')
+ax1.legend()
+ax1.grid(True, alpha=0.3)
+
+ax2 = plt.subplot(3, 2, 2)
+ax2_twin = ax2.twinx()
+ax2.plot(df['date'], df['unique_visitors'], label='Unique Visitors', color='green', linewidth=1.5)
+ax2_twin.plot(df['date'], df['conversions'], label='Conversions', color='purple', linewidth=1.5)
+ax2.set_title('Visitors and Conversions Over Time', fontsize=14, fontweight='bold')
+ax2.set_xlabel('Date')
+ax2.set_ylabel('Unique Visitors', color='green')
+ax2_twin.set_ylabel('Conversions', color='purple')
+ax2.legend(loc='upper left')
+ax2_twin.legend(loc='upper right')
+ax2.grid(True, alpha=0.3)
+
+ax3 = plt.subplot(3, 2, 3)
+pivot_data = df.pivot_table(
+    values='page_views',
+    index='day_of_week',
+    columns='week_of_year',
+    aggfunc='mean'
+)
+
+day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+pivot_data = pivot_data.reindex(day_order)
+sns.heatmap(pivot_data, cmap='YlOrRd', ax=ax3, cbar_kws={'label': 'Avg Page Views'})
+ax3.set_title('Heat Map: Page Views by Day of Week and Week of Year', fontsize=14, fontweight='bold')
+ax3.set_xlabel('Week of Year')
+ax3.set_ylabel('Day of Week')
+
+ax4 = plt.subplot(3, 2, 4)
+monthly_pivot = df.pivot_table(
+    values='conversions',
+    index='month',
+    columns='year',
+    aggfunc='sum'
+)
+sns.heatmap(monthly_pivot, annot=True, fmt='.0f', cmap='viridis', ax=ax4, cbar_kws={'label': 'Total Conversions'})
+ax4.set_title('Heat Map: Total Conversions by Month and Year', fontsize=14, fontweight='bold')
+ax4.set_xlabel('Year')
+ax4.set_ylabel('Month')
+month_labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+ax4.set_yticklabels(month_labels)
+
+ax5 = plt.subplot(3, 2, 5)
+ax5.hist(df['bounce_rate'], bins=50, color='coral', alpha=0.7, edgecolor='black')
+ax5.axvline(df['bounce_rate'].mean(), color='red', linestyle='--', linewidth=2, label=f'Mean: {df["bounce_rate"].mean():.1f}%')
+ax5.axvline(df['bounce_rate'].median(), color='blue', linestyle='--', linewidth=2, label=f'Median: {df["bounce_rate"].median():.1f}%')
+ax5.set_title('Bounce Rate Distribution', fontsize=14, fontweight='bold')
+ax5.set_xlabel('Bounce Rate (%)')
+ax5.set_ylabel('Frequency')
+ax5.legend()
+ax5.grid(True, alpha=0.3)
+
+ax6 = plt.subplot(3, 2, 6)
+correlation_cols = ['page_views', 'unique_visitors', 'bounce_rate', 'avg_session_duration', 'conversions']
+correlation_matrix = df[correlation_cols].corr()
+sns.heatmap(correlation_matrix, annot=True, fmt='.2f', cmap='coolwarm', center=0, 
+            square=True, ax=ax6, cbar_kws={'label': 'Correlation'})
+ax6.set_title('Correlation Heat Map Between Metrics', fontsize=14, fontweight='bold')
+
+plt.tight_layout()
+plt.savefig('heatmap_timeseries_analysis.png', dpi=300, bbox_inches='tight')
+plt.show()
+
+print("=" * 80)
+print("TIME SERIES AND HEAT MAP ANALYSIS SUMMARY")
+print("=" * 80)
+print(f"\nData Period: {df['date'].min().strftime('%Y-%m-%d')} to {df['date'].max().strftime('%Y-%m-%d')}")
+print(f"Total Days: {len(df)}")
+print("\n" + "-" * 80)
+print("DESCRIPTIVE STATISTICS")
+print("-" * 80)
+print(df[['page_views', 'unique_visitors', 'bounce_rate', 'avg_session_duration', 'conversions']].describe())
+
+print("\n" + "-" * 80)
+print("MONTHLY TRENDS")
+print("-" * 80)
+print(monthly_stats[['year', 'month', 'page_views', 'mom_growth']].tail(12))
+
+print("\n" + "-" * 80)
+print("TOP 5 DAYS BY PAGE VIEWS")
+print("-" * 80)
+print(df.nlargest(5, 'page_views')[['date', 'page_views', 'unique_visitors', 'conversions']])
+
+print("\n" + "-" * 80)
+print("AVERAGE METRICS BY DAY OF WEEK")
+print("-" * 80)
+day_of_week_stats = df.groupby('day_of_week')[['page_views', 'unique_visitors', 'conversions']].mean()
+day_of_week_stats = day_of_week_stats.reindex(day_order)
+print(day_of_week_stats)
+
+df.to_csv('timeseries_data.csv', index=False)
+monthly_stats.to_csv('monthly_statistics.csv', index=False)
+correlation_matrix.to_csv('correlation_matrix.csv')
+
+print("\n" + "=" * 80)
+print("FILES EXPORTED:")
+print("  - heatmap_timeseries_analysis.png")
+print("  - timeseries_data.csv")
+print("  - monthly_statistics.csv")
+print("  - correlation_matrix.csv")
+print("=" * 80)
