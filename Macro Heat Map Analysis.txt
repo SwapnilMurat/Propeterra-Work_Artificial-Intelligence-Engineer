@@ -1,0 +1,76 @@
+import matplotlib.pyplot as plt
+import pandas as pd
+
+data = {
+    'City': ['Bengaluru', 'Mumbai', 'Delhi NCR', 'Pune', 'Hyderabad', 'Kolkata', 'Chennai'],
+    'Gross_Leasing_Volume_MSF': [4.9, 4.3, 2.8, 3.4, 3.1, 0.6, 1.1],
+    'Rent_Growth_2022_2025_Percent': [15.8, 28.0, 20.0, 11.1, 24.1, 8.0, 9.1],
+    'PE_Investment_H1_2025_USD_M': [180, 150, 100, 170, 120, 30, 50],
+    'Vacancy_Rate_Percent': [12.5, 14.0, 16.2, 13.1, 13.5, 18.0, 15.4],
+    'New_Supply_MSF': [3.2, 2.7, 1.8, 2.4, 2.0, 0.3, 0.9]
+}
+
+df = pd.DataFrame(data)
+
+plt.figure(figsize=(10, 6))
+plt.bar(df['City'], df['Gross_Leasing_Volume_MSF'])
+plt.title('Gross Leasing Volume (MSF) by City - H1 2025')
+plt.ylabel('Leasing Volume (MSF)')
+plt.xlabel('City')
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.show()
+
+plt.figure(figsize=(10, 6))
+plt.bar(df['City'], df['Rent_Growth_2022_2025_Percent'])
+plt.title('Rent Growth (%) by City (2022–2025)')
+plt.ylabel('Rent Growth (%)')
+plt.xlabel('City')
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.show()
+
+plt.figure(figsize=(10, 6))
+plt.bar(df['City'], df['PE_Investment_H1_2025_USD_M'])
+plt.title('PE Investment in Commercial Real Estate (USD Million) - H1 2025')
+plt.ylabel('Investment (USD Million)')
+plt.xlabel('City')
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.show()
+
+plt.figure(figsize=(10, 6))
+plt.bar(df['City'], df['Vacancy_Rate_Percent'])
+plt.title('Vacancy Rate (%) by City - H1 2025')
+plt.ylabel('Vacancy Rate (%)')
+plt.xlabel('City')
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.show()
+
+plt.figure(figsize=(10, 6))
+plt.bar(df['City'], df['New_Supply_MSF'])
+plt.title('New Commercial Real Estate Supply (MSF) - H1 2025')
+plt.ylabel('New Supply (MSF)')
+plt.xlabel('City')
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.show()
+
+
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+df_heatmap = df.set_index('City')
+
+df_normalized = (df_heatmap - df_heatmap.min()) / (df_heatmap.max() - df_heatmap.min())
+
+plt.figure(figsize=(12, 6))
+sns.heatmap(df_normalized, annot=True, cmap='YlGnBu', cbar_kws={'label': 'Normalized Scale'})
+plt.title('Macro Data Heatmap for Commercial Real Estate (H1 2025)')
+plt.xlabel('Metrics')
+plt.ylabel('City')
+plt.tight_layout()
+plt.show()
