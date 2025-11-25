@@ -1,0 +1,101 @@
+import smtplib
+import ssl
+import csv
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
+
+SMTP_SERVER = "smtp.gmail.com"              
+SMTP_PORT = 465                              
+SENDER_EMAIL = "your_email@gmail.com"       
+SENDER_NAME = "Your Name"
+APP_PASSWORD = "your_app_password_here"      
+
+SUBJECT_TEMPLATE = "Invitation to Join Consulteligence – {company}"
+
+
+BODY_TEMPLATE = """
+<html>
+  <body style="font-family: Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #333;">
+    <p>Dear {name},</p>
+
+    <p>
+      I’m reaching out from <strong>Propeterra</strong>, a global platform that connects 
+      international real estate investors with trusted local experts.
+    </p>
+
+    <p>
+      We’re building a curated advisory network called <strong>Consulteligence</strong>, 
+      and we’d love to invite you to be part of it — especially given your expertise 
+      in areas concerning the real estate market.
+    </p>
+
+    <p>
+      The goal is simple: help investors make smarter decisions by connecting them 
+      with on-the-ground experts like you — on your own terms, without extra time commitment.
+    </p>
+
+    <p>
+      Here’s a quick video about what we’re building:<br>
+      <a href="https://youtu.be/h4x7EMl79NU" target="_blank">
+        https://youtu.be/h4x7EMl79NU
+      </a>
+    </p>
+
+    <p>
+      If it sounds interesting, click below to join or sign up:<br>
+      <a href="https://consulteligence.propeterra.com" target="_blank"
+         style="display:inline-block; padding:10px 18px; margin-top:8px; 
+                background-color:#1a73e8; color:#fff; text-decoration:none; 
+                border-radius:4px; font-weight:bold;">
+        Join Consulteligence
+      </a>
+    </p>
+
+    <p>Would love to have you on board!</p>
+
+    <p>Best regards,<br>
+       {sender_name}</p>
+  </body>
+</html>
+"""
+
+
+def send_email(recipient_email, subject, body_html):
+    try:
+        # Create email message
+        msg = MIMEMultipart("alternative")
+        msg['From'] = f"{SENDER_NAME} <{SENDER_EMAIL}>"
+        msg['To'] = recipient_email
+        msg['Subject'] = subject
+
+        # Attach HTML version
+        msg.attach(MIMEText(body_html, "html"))
+
+        # Connect and send email
+        context = ssl.create_default_context()
+        with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT, context=context) as server:
+            server.login(SENDER_EMAIL, APP_PASSWORD)
+            server.sendmail(SENDER_EMAIL, recipient_email, msg.as_string())
+
+        print(f" Email sent to {recipient_email}")
+
+    except Exception as e:
+        print(f" Failed to send to {recipient_email}: {e}")
+
+
+if __name__ == "__main__":
+    with open("contacts.csv", newline='', encoding='utf-8') as csvfile:
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+            name = row["name"].strip()
+            email = row["email"].strip()
+            company = row["company"].strip()
+
+            subject = SUBJECT_TEMPLATE.format(company=company)
+            body_html = BODY_TEMPLATE.format(
+                name=name,
+                sender_name=SENDER_NAME
+            )
+
+            send_email(email, subject, body_html)
