@@ -1,0 +1,48 @@
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+SMTP_SERVER = "smtp.vitalum.ac.in"  # Changing it to the institution's SMTP server
+SMTP_PORT = 587
+EMAIL_ADDRESS = "Email address"
+EMAIL_PASSWORD = "Password"
+
+def send_email(to_email, subject, body):
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = EMAIL_ADDRESS
+        msg['To'] = to_email
+        msg['Subject'] = subject
+        msg.attach(MIMEText(body, 'plain'))
+
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        server.starttls()
+        server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+        server.send_message(msg)
+        server.quit()
+        print(f"[SUCCESS] Email sent to {to_email}")
+    except Exception as e:
+        print(f"[ERROR] Could not send email to {to_email}: {e}")
+
+email_body = """Hi,
+
+I’m reaching out from Propeterra, a global platform that connects international real estate investors with trusted local experts.
+
+We’re building a curated advisory network called Consulteligence, and we’d love to invite you to be part of it — especially given your expertise in areas concerning the real estate market.
+
+The goal is simple: help investors make smarter decisions by connecting them with on-the-ground experts like you — on your own terms, without extra time commitment.
+
+Here’s a quick video about what we’re building:
+https://youtu.be/h4x7EMl79NU
+
+If it sounds interesting, click here to join or sign up .
+
+Would love to have you on board!
+
+Best,"""
+
+send_email(
+    "swapnil.kumar22@alumni.imperial.ac.uk",
+    "Invitation to join Propeterra’s Consulteligence advisory network",
+    email_body
+)
